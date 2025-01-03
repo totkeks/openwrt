@@ -48,7 +48,12 @@ jobs:
       # Validate target & subtarget
       # Validate device
 
-      # Communicate with user
+      - name: Communicate with user
+        if: ${{ always() }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "Hello World"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Update labels
 
   validate-updated-report:
