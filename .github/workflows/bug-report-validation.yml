@@ -1,0 +1,33 @@
+# This workflow automates the validation of (new) bug reports.
+# It handles two main flows: new issues and edited issues.
+#
+# 1. New Issue:
+# - Parse the issue based on the provided template.
+# - Verify the data in the template fields.
+# - If there are issues with the data:
+#   - Notify the issue creator via a comment, listing the items that need to be fixed.
+#   - Inform the creator that the issue will be discarded if not corrected.
+# - If the data is correct:
+#   - Apply the appropriate tags to the issue.
+#   - Thank the user for their contribution.
+#
+# 2. Edited Issue:
+# - Re-validate the issue after the user has made corrections.
+# - Follow the same steps as the new issue flow.
+# - Reuse the existing comment to provide further instructions or confirmation.
+
+name: Bug Report Validation
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label-component:
+    name: Validate and Tag Bug Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Placeholder step
+        run: echo "This is a placeholder for your custom steps."
