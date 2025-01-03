@@ -20,6 +20,7 @@ name: Bug Report Validation
 on:
   issues:
     types: [opened, edited]
+  workflow_dispatch:
 
 jobs:
   validate-new-report:
