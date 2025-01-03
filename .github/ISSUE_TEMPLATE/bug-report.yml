@@ -2,8 +2,7 @@ name: Bug report
 description: Create a bug report to help us improve
 labels:
   - bug
-  - bug-report
-  - to-triage
+  - bug:new
 body:
   - type: textarea
     id: description
@@ -15,7 +14,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: OpenWrt version
+      label: OpenWrt revision
+      placeholder: e.g., r12345-6789abcdef
       description: |
         The OpenWrt release or commit hash where this bug occurs (use command below).
         ```. /etc/openwrt_release && echo $DISTRIB_REVISION```
@@ -25,6 +25,7 @@ body:
     id: release
     attributes:
       label: OpenWrt release
+      placeholder: e.g, SNAPSHOT or v12.34.0 or v12.34.0-rc2
       description: |
         The OpenWrt release or commit hash where this bug occurs (use command below).
         ```. /etc/openwrt_release && echo $DISTRIB_RELEASE```
