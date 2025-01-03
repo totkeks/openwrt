@@ -23,8 +23,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-new-report:
-    if: ${{ github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'bug:new') }}
+  validate:
+    if: >
+      ${{
+        (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'bug:new')) || 
+        (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'bug:invalid')) 
+      }}
     name: Validate a new bug report
     runs-on: ubuntu-latest
     steps:
@@ -48,21 +52,11 @@ jobs:
       # Validate target & subtarget
       # Validate device
 
-      - name: Communicate with user
+      - name: Create or update comment
         if: ${{ always() }}
         run: |
+          message="Hello @${{ github.event.issue.user.login }}, thank you for submitting a bug report."
           gh issue comment ${{ github.event.issue.number }} --body "Hello World"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Update labels
-
-  validate-updated-report:
-    if: ${{ github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'bug:invalid') }}
-    name: Re-validate an updated bug report
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Placeholder step
-        run: echo "This is a placeholder for your custom steps."
