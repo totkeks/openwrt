@@ -26,10 +26,10 @@ jobs:
   validate:
     if: >
       ${{
-        (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'bug:new')) || 
-        (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'bug:invalid')) 
+        (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'bug:new')) ||
+        (github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'bug:invalid'))
       }}
-    name: Validate a new bug report
+    name: Validate bug report
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -40,7 +40,7 @@ jobs:
         id: issue-parser
         with:
           template-path: .github/ISSUE_TEMPLATE/bug-report.yml
-          
+
       - name: Validate Release
         uses: ./.github/actions/validate-release
         id: validate-release
@@ -52,11 +52,67 @@ jobs:
       # Validate target & subtarget
       # Validate device
 
-      - name: Create or update comment
-        if: ${{ always() }}
+      - name: Process validation results
+        if: always()
+        id: validation
         run: |
-          message="Hello @${{ github.event.issue.user.login }}, thank you for submitting a bug report."
-          gh issue comment ${{ github.event.issue.number }} --body "Hello World"
+          declare -a results=()
+          has_errors="false"
+
+          if [[ "${{ steps.validate-release.outcome }}" == "failure" ]]; then
+            results+=("- Release: :x: Invalid version specified")
+            has_errors="true"
+          else
+            results+=("- Release: :white_check_mark: Version validated")
+          fi
+
+          # Set outputs
+          echo "has_errors=$has_errors" >> $GITHUB_OUTPUT
+          echo "results<<EOF" >> $GITHUB_OUTPUT
+          printf '%s\n' "${results[@]}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create or update issue comment
+        if: always()
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Update labels
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body="<!-- bug-report-validation -->
+          Hi @${{ github.event.issue.user.login }},
+          Thank you for taking the time to report this issue."
+
+          if [[ "${{ steps.validation.outputs.has_errors }}" == "true" ]]; then
+            body+="
+            During validation, we found some items that need your attention:
+            ${{ steps.validation.outputs.results }}
+            Please update your report with the correct information."
+
+          else
+            body+="
+            All validations passed successfully:
+            ${{ steps.validation.outputs.results }}"
+          fi
+
+          if [[ "${{ github.event.action }}" == "edited" ]]; then
+            comment_id=$(gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+              --jq '.[] | select(.body | contains("<!-- bug-report-validation -->")) | .id')
+            if [ -n "$comment_id" ]; then
+              gh api --method PATCH repos/${{ github.repository }}/issues/comments/$comment_id -f body="$body"
+              exit 0
+            fi
+          fi
+
+          gh issue comment ${{ github.event.issue.number }} --body "$body"
+
+      - name: Update issue labels
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} --remove-label "bug:new"
+
+          if [[ "${{ steps.validation.outputs.has_errors }}" == "true" ]]; then
+            gh issue edit ${{ github.event.issue.number }} --add-label "bug:invalid"
+          else
+            gh issue edit ${{ github.event.issue.number }} --remove-label "bug:invalid"
+          fi

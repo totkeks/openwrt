@@ -1,0 +1,55 @@
+name: "Validate Release"
+description: "Validates OpenWrt release version format and existence"
+
+inputs:
+  release:
+    description: "Release version to validate"
+    required: true
+
+outputs:
+  release:
+    description: "Processed release name"
+    value: ${{ steps.validate.outputs.release }}
+  tag_name:
+    description: "Target branch name"
+    value: ${{ steps.validate.outputs.tag_name }}
+  error:
+    description: "Error message if validation failed"
+    value: ${{ steps.validate.outputs.error }}
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      id: validate
+      run: |
+        # Validate format
+        if [[ -z "$(echo "${{ inputs.release }}" | grep -Po '^SNAPSHOT$|^[0-9]+\.[0-9]+-SNAPSHOT$|^[0-9]+\.[0-9]+\.[0-9](-rc[0-9]+)*$')" ]]; then
+          echo "error=Invalid release format" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        release=${{ inputs.release }}
+        # Add v prefix for release tags
+        if [[ -n "$(echo ${{ inputs.release }} | grep -Po '^[0-9]+\.[0-9]+\.[0-9](-rc[0-9]+)*$')" ]]; then
+          release="v${{ inputs.release }}"
+        fi
+        # Convert SNAPSHOT to branch name
+        if [[ -n "$(echo ${{ inputs.release }} | grep -Po '^[0-9]+\.[0-9]+-SNAPSHOT$')" ]]; then
+          release="openwrt-$(echo ${{ inputs.release }} | grep -Po '^[0-9]+\.[0-9]+')"
+        fi
+
+        # Verify tag exists
+        if [[ $release != "SNAPSHOT" ]] && [[ -z $(echo $release | grep -Po '^openwrt-[0-9]+\.[0-9]+$') ]] && ! git show-ref --tags $release --quiet; then
+          echo "error=Release tag not found" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Set outputs
+        tag_name=${{ inputs.release }}
+        if [[ $tag_name != "SNAPSHOT" ]]; then
+          tag_name="release/$(echo ${{ inputs.release }} | grep -Po '^[0-9]+\.[0-9]+')"
+        fi
+
+        echo "release=$release" >> $GITHUB_OUTPUT
+        echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
